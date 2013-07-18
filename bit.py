@@ -1,55 +1,64 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
-import subprocess
-__version__ = '1.0.1'
+import subprocess as sp
+import sys
+__version__ = '1.0.2'
 
 def ex(cmd):
+    assert type(cmd) != list
     """Execute comand."""
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    out = p.stdout.read().strip()
-    return out
+    with sp.Popen(cmd, shell=True,
+                    stdout=sp.PIPE,
+                    stdin=sp.PIPE) as p:
+        try:
+            out, err = p.communicate()
+            return out
+        except OSError as e:
+            print("Execution failed:", e)
+            return None
 
 def change_bitrate(file_source, file_dest, bitrate, verbose=False):
     """Change bitrate."""
-    cmd_ = 'sox  "{file_source}" -C {bitrate} "{file_dest}"'
+    cmd_ = 'sox "{file_source}" -C {bitrate} "{file_dest}"'
     cmd_= cmd_.format(**{'file_source':file_source,
                         'bitrate':bitrate,
                         'file_dest':file_dest })
     if verbose:
         print(cmd_)
-    ex(cmd_)
+    out = ex(cmd_)
+    if verbose and out:
+        print(out)   
 
 def walk(path_from, path_to, bitrate, verbose=False):
-        """Walk on path and convert """
-        if not os.path.isdir(path_from):
-            print('Wrong path: {}'.format(path_from))
-            return
-        path_from = os.path.abspath(path_from)
-        path_to = os.path.abspath(path_to)
+    """Walk on path and convert """
+    if not os.path.isdir(path_from):
+        print('Wrong path: {}'.format(path_from))
+        sys.exit(1)
+    path_from = os.path.abspath(path_from)
+    path_to = os.path.abspath(path_to)
 
-        for root, dirs, files in os.walk(path_from):
-            new_dir = root.replace(path_from, path_to, 1)
-            for name in files:
-                if not name.endswith('.mp3'):
-                    continue
-                if not os.path.exists(new_dir):
-                    os.mkdir(new_dir)
-                file_source = os.path.join(root, name)
-                file_dest = os.path.join(new_dir, name)
-                if os.path.exists(file_dest):
-                    continue
-                change_bitrate(file_source, file_dest,
-                                bitrate, verbose)
+    for root, dirs, files in os.walk(path_from):
+        new_dir = root.replace(path_from, path_to, 1)
+        for name in sorted(files):
+            if not name.endswith('.mp3'):
+                continue
+            if not os.path.exists(new_dir):
+                os.mkdir(new_dir)
+            file_source = os.path.join(root, name)
+            file_dest = os.path.join(new_dir, name)
+            if os.path.exists(file_dest):
+                continue
+            change_bitrate(file_source, file_dest,
+                            bitrate, verbose)
 
 def main():
     try:
         import argparse
         parser = argparse.ArgumentParser()
         parser.add_argument("path",
-                            help="path with original sound files")
+                            help="path with original sound files (required)")
         parser.add_argument("-d", "--dest",
-                            #default = None,
                             help="destination path for converted sound files")
         parser.add_argument("-b", "--bitrate",
                             default=64, help="bitrate (default: 64)")
@@ -65,10 +74,11 @@ def main():
         bitrate = args.bitrate
         verbose = args.verbose
     except ImportError:
+        # No argparse module
         from optparse import OptionParser
         parser = OptionParser()
         parser.add_option("path",
-                        help="path with original sound files")
+                            help="path with original sound files (required)")
         parser.add_option("-d", "--dest", dest="dest",
                           default = "null",
                           help="destination path for converted sound files")
@@ -90,8 +100,12 @@ def main():
     try:
         if path_from:
             walk(path_from, dest, bitrate, verbose)
+        else:
+            print("Please, set path with files!")
     except KeyboardInterrupt:
         print("Stopped manually")
+    except Exception as e:
+        print(e)
 
 if __name__ == "__main__":
     main()
