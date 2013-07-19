@@ -108,50 +108,25 @@ def go(path_from, path_to, bitrate, verbose=False):
             print(e)
 
 def main():
-    try:
-        import argparse
-        parser = argparse.ArgumentParser()
-        parser.add_argument("path",
-                            help="path with original sound files (required)")
-        parser.add_argument("-d", "--dest",
-                            help="destination path for converted sound files")
-        parser.add_argument("-b", "--bitrate",
-                            default=64, help="bitrate (default: 64)")
-        parser.add_argument("-v", "--verbose", action="store_true",
-                            help="verbose output")
-        args = parser.parse_args()
-        path_from = args.path
-        if not args.dest:
-            dest = "{}_{}".format(path_from,\
-                                  args.bitrate)
-        else:
-            dest = args.dest
-        bitrate = args.bitrate
-        verbose = args.verbose
-    except ImportError:
-        # No argparse module
-        from optparse import OptionParser
-        parser = OptionParser()
-        parser.add_option("path",
-                            help="path with original sound files (required)")
-        parser.add_option("-d", "--dest", dest="dest",
-                          default = "null",
-                          help="destination path for converted sound files")
-        parser.add_option("-b", "--bitrate", dest="bitrate",
-                          default=64, help="bitrate (default: 64)")
-        parser.add_option("-v", "--verbose", dest="verbose",
-                          action="store_true", 
-                          help="verbose output")
-        (options, args) = parser.parse_args()
-        path_from = args[0]
-        if options.dest == "null":
-            dest = "{}_{}".format(path_from,\
-                                  options.bitrate)
-        else:
-            dest = options.dest
-        path_from = options.source
-        bitrate = options.bitrate
-        verbose = options.verbose
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path",
+                        help="path with original sound files (required)")
+    parser.add_argument("-d", "--dest",
+                        help="destination path for converted sound files")
+    parser.add_argument("-b", "--bitrate",
+                        default=64, help="bitrate (default: 64)")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="verbose output")
+    args = parser.parse_args()
+    path_from = args.path
+    if not args.dest:
+        dest = "{}_{}".format(path_from,\
+                              args.bitrate)
+    else:
+        dest = args.dest
+    bitrate = args.bitrate
+    verbose = args.verbose
     try:
         if path_from:
             go(path_from, dest, bitrate, verbose)
