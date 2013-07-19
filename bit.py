@@ -3,54 +3,109 @@
 import os
 import subprocess as sp
 import sys
-__version__ = '1.0.2'
+import shutil
+__version__ = '1.0.3'
 
 def ex(cmd):
+    """
+    Execute comand (must be a string) in shell.
+    """
     assert type(cmd) != list
-    """Execute comand."""
     with sp.Popen(cmd, shell=True,
                     stdout=sp.PIPE,
                     stdin=sp.PIPE) as p:
+        #Official sp.Popen.wait() is prototype
         try:
             out, err = p.communicate()
-            return out
+            return out, err
         except OSError as e:
+            p.kill()
+            p.wait()
             print("Execution failed:", e)
             return None
 
-def change_bitrate(file_source, file_dest, bitrate, verbose=False):
-    """Change bitrate."""
+def change_bitrate(file_source, file_dest,
+                    bitrate, verbose=False):
+    """
+    Change bitrate with SoX audio convert utility.
+    """
     cmd_ = 'sox "{file_source}" -C {bitrate} "{file_dest}"'
     cmd_= cmd_.format(**{'file_source':file_source,
                         'bitrate':bitrate,
                         'file_dest':file_dest })
     if verbose:
         print(cmd_)
-    out = ex(cmd_)
+    out, err = ex(cmd_)
     if verbose and out:
-        print(out)   
+        print(out, err)   
 
-def walk(path_from, path_to, bitrate, verbose=False):
-    """Walk on path and convert """
+def walk(path_from, path_to):
+    """
+    Walk on path with name path_from.
+    path_to - is path for new files.
+    (It is best place for construct new path.)
+    Return file_source, file_dest and new_dir.
+    file_dest - filename for copy of file_source.
+    new_dir - path for file_source.
+    """
     if not os.path.isdir(path_from):
         print('Wrong path: {}'.format(path_from))
         sys.exit(1)
     path_from = os.path.abspath(path_from)
     path_to = os.path.abspath(path_to)
-
     for root, dirs, files in os.walk(path_from):
         new_dir = root.replace(path_from, path_to, 1)
         for name in sorted(files):
-            if not name.endswith('.mp3'):
-                continue
-            if not os.path.exists(new_dir):
-                os.mkdir(new_dir)
             file_source = os.path.join(root, name)
             file_dest = os.path.join(new_dir, name)
-            if os.path.exists(file_dest):
+            yield (file_source, file_dest, new_dir)
+
+def go(path_from, path_to, bitrate, verbose=False):
+    """
+    Logick main function for programm.
+    path_from - path with audio files for convert.
+    path_to - new path for save result audio files.
+    bitrate - bitrate for new file.
+    verbose - set True for output every command.
+    """
+    #Single file
+    if os.path.isfile(path_from):
+        try:
+            change_bitrate(path_from, path_to,
+                                bitrate, verbose)
+        except OSError as e:
+            print("Execution failed:", e)
+            print("Error in copy:\n{}\nto:\n{}".\
+                    format(path_from, path_to))
+        except KeyboardInterrupt:
+            print("The file may be corrupt: {}".\
+                    format(path_to))
+            sys.exit(1)
+        except Exception as e:
+            print(e)
+        sys.exit()
+    # Path
+    for fs, fd, ndir in walk(path_from, path_to):
+        try:
+            if not os.path.exists(ndir):
+                os.mkdir(ndir)
+            if os.path.exists(fd):
                 continue
-            change_bitrate(file_source, file_dest,
-                            bitrate, verbose)
+            elif not fs.endswith('.mp3'):
+                shutil.copy2(fs, fd)
+            else:
+                change_bitrate(fs, fd,
+                                bitrate, verbose)
+        except OSError as e:
+            print("Execution failed:", e)
+            print("Error in copy:\n{}\nto:\n{}".\
+                    format(fs, fd))
+        except KeyboardInterrupt:
+            print("The file may be corrupt: {}".\
+                    format(fs))
+            sys.exit(1)
+        except Exception as e:
+            print(e)
 
 def main():
     try:
@@ -99,7 +154,7 @@ def main():
         verbose = options.verbose
     try:
         if path_from:
-            walk(path_from, dest, bitrate, verbose)
+            go(path_from, dest, bitrate, verbose)
         else:
             print("Please, set path with files!")
     except KeyboardInterrupt:
