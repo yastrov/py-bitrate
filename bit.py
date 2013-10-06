@@ -4,7 +4,8 @@ import os
 import subprocess as sp
 import sys
 import shutil
-__version__ = '1.0.3'
+import traceback
+__version__ = '1.0.6'
 
 def ex(cmd):
     """
@@ -85,6 +86,8 @@ def go(path_from, path_to, bitrate, verbose=False):
             print(e)
         sys.exit()
     # Path
+    if not os.path.exists(path_to):
+        os.mkdir(path_to)
     for fs, fd, ndir in walk(path_from, path_to):
         try:
             if not os.path.exists(ndir):
@@ -100,12 +103,14 @@ def go(path_from, path_to, bitrate, verbose=False):
             print("Execution failed:", e)
             print("Error in copy:\n{}\nto:\n{}".\
                     format(fs, fd))
+            traceback.print_exc()
         except KeyboardInterrupt:
             print("The file may be corrupt: {}".\
                     format(fs))
             sys.exit(1)
         except Exception as e:
             print(e)
+            traceback.print_exc()
 
 def main():
     import argparse
@@ -115,27 +120,37 @@ def main():
     parser.add_argument("-d", "--dest",
                         help="destination path for converted sound files")
     parser.add_argument("-b", "--bitrate",
-                        default=64, help="bitrate (default: 64)")
+                        default=32, help="bitrate (default: 64)")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="verbose output")
+    parser.add_argument("--version", action="store_true",
+                        help="print version")
     args = parser.parse_args()
-    path_from = args.path
+    if args.version:
+        print(__version__)
     if not args.dest:
-        dest = "{}_{}".format(path_from,\
-                              args.bitrate)
+        if os.path.isfile(args.path):
+            l = args.path.split('.')
+            s = l[-2] + "_{}".format(args.bitrate)
+            l[-2] = s
+            dest = '.'.join(l)
+        else:
+            dest = "{}_{}".format(args.path,\
+                                    args.bitrate)
     else:
         dest = args.dest
-    bitrate = args.bitrate
-    verbose = args.verbose
     try:
         if path_from:
-            go(path_from, dest, bitrate, verbose)
+            go(path_from, dest,
+                args.bitrate,
+                args.verbose)
         else:
             print("Please, set path with files!")
     except KeyboardInterrupt:
         print("Stopped manually")
     except Exception as e:
         print(e)
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()
