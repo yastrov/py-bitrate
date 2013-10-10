@@ -5,7 +5,7 @@ import subprocess as sp
 import sys
 import shutil
 import traceback
-__version__ = '1.0.6'
+__version__ = '1.0.7'
 
 def ex(cmd):
     """
@@ -140,12 +140,9 @@ def main():
     else:
         dest = args.dest
     try:
-        if path_from:
-            go(path_from, dest,
+        go(args.path, dest,
                 args.bitrate,
                 args.verbose)
-        else:
-            print("Please, set path with files!")
     except KeyboardInterrupt:
         print("Stopped manually")
     except Exception as e:
