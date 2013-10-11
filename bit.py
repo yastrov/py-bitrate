@@ -7,6 +7,15 @@ import shutil
 import traceback
 __version__ = '1.0.7'
 
+lst_for_sox = """8svx aif aifc aiff aiffc al amb amr-nb amr-wb anb 
+au avr awb caf cdda cdr cvs cvsd cvu dat dvms f32 f4 f64 
+f8 fap flac fssd gsm gsrt hcom htk ima ircam la lpc lpc10 
+lu mat mat4 mat5 maud mp2 mp3 nist ogg paf prc pvf raw s1 
+s16 s2 s24 s3 s32 s4 s8 sb sd2 sds sf sl sln smp snd 
+sndfile sndr sndt sou sox sph sw txw u1 u16 u2 u24 u3 u32 
+u4 u8 ub ul uw vms voc vorbis vox w64 wav wavpcm wv wve xa
+ xi""".split()
+
 def ex(cmd):
     """
     Execute comand (must be a string) in shell.
@@ -37,7 +46,8 @@ def change_bitrate(file_source, file_dest,
     if verbose:
         print(cmd_)
     out, err = ex(cmd_)
-    if verbose and out:
+    if out is not b'' or \
+        err is not None:
         print(out, err)   
 
 def walk(path_from, path_to):
@@ -72,8 +82,12 @@ def go(path_from, path_to, bitrate, verbose=False):
     #Single file
     if os.path.isfile(path_from):
         try:
-            change_bitrate(path_from, path_to,
+            end = path_from.split('.')[-1]
+            if end in lst_for_sox:
+                change_bitrate(path_from, path_to,
                                 bitrate, verbose)
+            else:
+                print('Invalid filetype: {}'.format(end))
         except OSError as e:
             print("Execution failed:", e)
             print("Error in copy:\n{}\nto:\n{}".\
@@ -94,11 +108,12 @@ def go(path_from, path_to, bitrate, verbose=False):
                 os.mkdir(ndir)
             if os.path.exists(fd):
                 continue
-            elif not fs.endswith('.mp3'):
-                shutil.copy2(fs, fd)
-            else:
+            end = fs.split('.')[-1]
+            if end in lst_for_sox:
                 change_bitrate(fs, fd,
                                 bitrate, verbose)
+            else:
+                shutil.copy2(fs, fd)
         except OSError as e:
             print("Execution failed:", e)
             print("Error in copy:\n{}\nto:\n{}".\
@@ -114,7 +129,7 @@ def go(path_from, path_to, bitrate, verbose=False):
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Convert audiofiles with SoX.')
     parser.add_argument("path",
                         help="path with original sound files (required)")
     parser.add_argument("-d", "--dest",
@@ -123,11 +138,10 @@ def main():
                         default=32, help="bitrate (default: 64)")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="verbose output")
-    parser.add_argument("--version", action="store_true",
+    parser.add_argument("--version", action='version',
+                        version='%(prog)s {}'.format(__version__),
                         help="print version")
     args = parser.parse_args()
-    if args.version:
-        print(__version__)
     if not args.dest:
         if os.path.isfile(args.path):
             l = args.path.split('.')
