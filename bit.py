@@ -80,7 +80,7 @@ def mkdir(path_to, new_dir):
     """
     if __paths__.get(new_dir, False):
         return
-    dr = new_dir.replace(path_to, '/', 1)
+    dr = new_dir.replace(path_to, '', 1)
     l = dr.split(os.path.sep)
     for x in filter(len, l):
         path_to = os.path.join(path_to, x)
