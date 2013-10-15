@@ -5,7 +5,7 @@ import subprocess as sp
 import sys
 import shutil
 import traceback
-__version__ = '1.0.7'
+__version__ = '1.0.8'
 
 lst_for_sox = """8svx aif aifc aiff aiffc al amb amr-nb amr-wb anb 
 au avr awb caf cdda cdr cvs cvsd cvu dat dvms f32 f4 f64 
@@ -15,6 +15,8 @@ s16 s2 s24 s3 s32 s4 s8 sb sd2 sds sf sl sln smp snd
 sndfile sndr sndt sou sox sph sw txw u1 u16 u2 u24 u3 u32 
 u4 u8 ub ul uw vms voc vorbis vox w64 wav wavpcm wv wve xa
  xi""".split()
+
+__paths__ = {}
 
 def ex(cmd):
     """
@@ -71,6 +73,21 @@ def walk(path_from, path_to):
             file_dest = os.path.join(new_dir, name)
             yield (file_source, file_dest, new_dir)
 
+def mkdir(path_to, new_dir):
+    """
+    Create all paths beyond
+    path_to and new_dir
+    """
+    if __paths__.get(new_dir, False):
+        return
+    dr = new_dir.replace(path_to, '/', 1)
+    l = dr.split(os.path.sep)
+    for x in filter(len, l):
+        path_to = os.path.join(path_to, x)
+        if not os.path.exists(path_to):
+            os.mkdir(path_to)
+            __paths__[path_to] = True
+
 def go(path_from, path_to, bitrate, verbose=False):
     """
     Logick main function for programm.
@@ -105,7 +122,7 @@ def go(path_from, path_to, bitrate, verbose=False):
     for fs, fd, ndir in walk(path_from, path_to):
         try:
             if not os.path.exists(ndir):
-                os.mkdir(ndir)
+                mkdir(path_to, ndir)
             if os.path.exists(fd):
                 continue
             end = fs.split('.')[-1]
