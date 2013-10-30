@@ -85,6 +85,29 @@ def mkdir(path_to, new_dir):
         if not os.path.exists(path_to):
             os.mkdir(path_to)
 
+def foo(fs, fd, bitrate, verbose=False):
+    try:
+        if os.path.exists(fd):
+            return
+        end = os.path.basename(fs).split('.')[-1]
+        if end in lst_for_sox:
+            change_bitrate(fs, fd,
+                            bitrate, verbose)
+        else:
+            shutil.copy2(fs, fd)
+    except OSError as e:
+        print("Execution failed:", e)
+        print("Error in copy:\n{}\nto:\n{}".\
+                format(fs, fd))
+        traceback.print_exc()
+    except KeyboardInterrupt:
+        print("The file may be corrupt: {}".\
+                format(fs))
+        sys.exit(1)
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+
 def go(path_from, path_to, bitrate, verbose=False):
     """
     Logick main function for programm.
@@ -97,50 +120,15 @@ def go(path_from, path_to, bitrate, verbose=False):
     """
     #Single file
     if os.path.isfile(path_from):
-        try:
-            end = os.path.basename(path_from).split('.')[-1]
-            if end in lst_for_sox:
-                change_bitrate(path_from, path_to,
-                                bitrate, verbose)
-            else:
-                print('Invalid filetype: {}'.format(end))
-        except OSError as e:
-            print("Execution failed:", e)
-            print("Error in copy:\n{}\nto:\n{}".\
-                    format(path_from, path_to))
-        except KeyboardInterrupt:
-            print("The file may be corrupt: {}".\
-                    format(path_to))
-            sys.exit(1)
-        except Exception as e:
-            print(e)
+        foo(path_from, path_to,
+            bitrate, verbose)
         sys.exit()
     # Path
     if not os.path.exists(path_to):
         os.mkdir(path_to)
     for fs, fd, ndir in walk(path_from, path_to):
-        try:
-            mkdir(path_to, ndir)
-            if os.path.exists(fd):
-                continue
-            end = os.path.basename(fs).split('.')[-1]
-            if end in lst_for_sox:
-                change_bitrate(fs, fd,
-                                bitrate, verbose)
-            else:
-                shutil.copy2(fs, fd)
-        except OSError as e:
-            print("Execution failed:", e)
-            print("Error in copy:\n{}\nto:\n{}".\
-                    format(fs, fd))
-            traceback.print_exc()
-        except KeyboardInterrupt:
-            print("The file may be corrupt: {}".\
-                    format(fs))
-            sys.exit(1)
-        except Exception as e:
-            print(e)
-            traceback.print_exc()
+        mkdir(path_to, ndir)
+        foo(fs, fd, bitrate, verbose)
 
 def main():
     import argparse
