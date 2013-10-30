@@ -5,7 +5,7 @@ import subprocess as sp
 import sys
 import shutil
 import traceback
-__version__ = '1.0.7'
+__version__ = '1.0.8'
 
 lst_for_sox = """8svx aif aifc aiff aiffc al amb amr-nb amr-wb anb 
 au avr awb caf cdda cdr cvs cvsd cvu dat dvms f32 f4 f64 
@@ -71,18 +71,34 @@ def walk(path_from, path_to):
             file_dest = os.path.join(new_dir, name)
             yield (file_source, file_dest, new_dir)
 
+def mkdir(path_to, new_dir):
+    """
+    Create all paths beyond
+    path_to and new_dir
+    """
+    if os.path.exists(new_dir):
+        return
+    dr = new_dir.replace(path_to, '', 1)
+    l = dr.split(os.path.sep)
+    for x in filter(len, l):
+        path_to = os.path.join(path_to, x)
+        if not os.path.exists(path_to):
+            os.mkdir(path_to)
+
 def go(path_from, path_to, bitrate, verbose=False):
     """
     Logick main function for programm.
     path_from - path with audio files for convert.
-    path_to - new path for save result audio files.
+    path_to - new path for save result audio files,
+    must be in exist directory.
+    (Or filename, if path_from is filename.)
     bitrate - bitrate for new file.
     verbose - set True for output every command.
     """
     #Single file
     if os.path.isfile(path_from):
         try:
-            end = path_from.split('.')[-1]
+            end = os.path.basename(path_from).split('.')[-1]
             if end in lst_for_sox:
                 change_bitrate(path_from, path_to,
                                 bitrate, verbose)
@@ -104,11 +120,10 @@ def go(path_from, path_to, bitrate, verbose=False):
         os.mkdir(path_to)
     for fs, fd, ndir in walk(path_from, path_to):
         try:
-            if not os.path.exists(ndir):
-                os.mkdir(ndir)
+            mkdir(path_to, ndir)
             if os.path.exists(fd):
                 continue
-            end = fs.split('.')[-1]
+            end = os.path.basename(fs).split('.')[-1]
             if end in lst_for_sox:
                 change_bitrate(fs, fd,
                                 bitrate, verbose)
@@ -142,7 +157,9 @@ def main():
                         version='%(prog)s {}'.format(__version__),
                         help="print version")
     args = parser.parse_args()
-    if not args.dest:
+    if args.dest:
+        dest = args.dest
+    else:
         if os.path.isfile(args.path):
             l = args.path.split('.')
             s = l[-2] + "_{}".format(args.bitrate)
@@ -151,8 +168,6 @@ def main():
         else:
             dest = "{}_{}".format(args.path,\
                                     args.bitrate)
-    else:
-        dest = args.dest
     try:
         go(args.path, dest,
                 args.bitrate,
