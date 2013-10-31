@@ -20,7 +20,7 @@ def ex(cmd):
     """
     Execute comand (must be a string) in shell.
     """
-    assert type(cmd) != list
+    assert isinstance(cmd, str)
     with sp.Popen(cmd, shell=True,
                     stdout=sp.PIPE,
                     stdin=sp.PIPE) as p:
@@ -57,11 +57,10 @@ def walk(path_from, path_to):
     (It is best place for construct new path.)
     Return file_source, file_dest and new_dir.
     file_dest - filename for copy of file_source.
-    new_dir - path for file_source.
     """
     if not os.path.isdir(path_from):
-        print('Wrong path: {}'.format(path_from))
-        sys.exit(1)
+        msg = 'Wrong path: {}'.format(path_from)
+        raise Exception(msg)
     path_from = os.path.abspath(path_from)
     path_to = os.path.abspath(path_to)
     for root, dirs, files in os.walk(path_from):
@@ -69,27 +68,34 @@ def walk(path_from, path_to):
         for name in sorted(files):
             file_source = os.path.join(root, name)
             file_dest = os.path.join(new_dir, name)
-            yield (file_source, file_dest, new_dir)
+            yield (file_source, file_dest)
 
-def mkdir(path_to, new_dir):
+def mkdir(new_dir):
     """
-    Create all paths beyond
-    path_to and new_dir
+    Create new_dir and all prev dirs.
     """
-    if os.path.exists(new_dir):
+    _path = os.path.dirname(new_dir)
+    if os.path.exists(_path):
         return
-    dr = new_dir.replace(path_to, '', 1)
-    l = dr.split(os.path.sep)
-    for x in filter(len, l):
-        path_to = os.path.join(path_to, x)
-        if not os.path.exists(path_to):
-            os.mkdir(path_to)
+    _p_list = []
+    if _path.endswith(os.path.sep):
+        _path = _path[:-1] 
+    while not os.path.exists(_path):
+        _p_list.append( os.path.basename(_path) )
+        _path = os.path.dirname(_path)
+    _p_list.reverse()
+    while _p_list:
+        _path = os.path.join(_path, _p_list.pop(0))
+        os.mkdir(_path)
 
-def foo(fs, fd, bitrate, verbose=False):
+def change_file(fs, fd, bitrate, verbose=False):
+    """
+    Change bitrate for one file.
+    """
     try:
         if os.path.exists(fd):
             return
-        end = os.path.basename(fs).split('.')[-1]
+        end = os.path.splitext(fs)[1][1:]
         if end in lst_for_sox:
             change_bitrate(fs, fd,
                             bitrate, verbose)
@@ -120,15 +126,13 @@ def go(path_from, path_to, bitrate, verbose=False):
     """
     #Single file
     if os.path.isfile(path_from):
-        foo(path_from, path_to,
+        change_file(path_from, path_to,
             bitrate, verbose)
         sys.exit()
     # Path
-    if not os.path.exists(path_to):
-        os.mkdir(path_to)
-    for fs, fd, ndir in walk(path_from, path_to):
-        mkdir(path_to, ndir)
-        foo(fs, fd, bitrate, verbose)
+    for fs, fd in walk(path_from, path_to):
+        mkdir(fd)
+        change_file(fs, fd, bitrate, verbose)
 
 def main():
     import argparse
